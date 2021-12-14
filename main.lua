@@ -16,6 +16,6 @@ function _update()
 end
 
 function _draw()
-    cls(g_hello_world_color)
+    map(0, 0, 0, 0, 32, 32)
     print("Hello World", 60, 60, g_hello_world_color + 1)
 end
