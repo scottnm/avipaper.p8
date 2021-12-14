@@ -1,3 +1,12 @@
+-- TODO:
+-- projecticles come out of screen
+-- simulate moving to vertical lanes when o/x buttons
+    -- slowly transition between fixed lanes via air currents
+-- only move vertically when hitting aircurrents
+
+-- FURTHER IDEAS:
+-- day night/cycle for the background
+-- wobble on the plane
 g_input = nil
 g_plane_pos = { x = 10, y = 10 }
 g_plane_size = { width = 16, height = 16 }
