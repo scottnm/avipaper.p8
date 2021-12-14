@@ -1,3 +1,15 @@
+g_input = nil
+g_plane_pos = { x = 10, y = 10 }
+g_plane_size = { width = 16, height = 16 }
+g_plane_sprites = {
+    -- contains a separate table for each 'lane' that the plane can fly in
+    -- each lane contains 3 sprite indices: 1 for the far left, one for left, and one for center
+    -- the right side is done by flipping the left sprites
+    top_lane =    { outside =  1, leaning =  3, center =  5 },
+    mid_lane =    { outside =  7, leaning =  9, center = 11 },
+    bottom_lane = { outside = 33, leaning = 35, center = 37 },
+}
+
 function poll_input(input)
     if input == nil then
         input = {
@@ -42,7 +54,7 @@ function poll_input(input)
 end
 
 function handle_plane_input(input, plane_pos)
-    new_pos = {
+    local new_pos = {
         x = plane_pos.x,
         y = plane_pos.y,
     }
@@ -54,7 +66,58 @@ function handle_plane_input(input, plane_pos)
         new_pos.x += 1
     end
 
+    -- FIXME: drop these eventually
+    if input.btn_up then
+        new_pos.y -= 1
+    end
+    if input.btn_down then
+        new_pos.y += 1
+    end
+
     return new_pos
+end
+
+function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
+
+    -- the plane's position starts at its top left corner.
+    -- For slightly nicer visuals, calcuate the current sprite based off the center of the plane's 'position'
+    local pos = {
+        x = (plane_tl_pos.x + plane_size.width / 2),
+        y = (plane_tl_pos.y + plane_size.height / 2),
+    }
+
+    local lane
+    if pos.y < 43 then
+        lane = 'top_lane'
+    elseif pos.y < 86 then
+        lane = 'mid_lane'
+    else
+        lane = 'bottom_lane'
+    end
+
+    local flip
+    local sprite_type
+    if pos.x < 26 then
+        flip = false
+        sprite_type = 'outside'
+    elseif pos.x < 52 then
+        flip = false
+        sprite_type = 'leaning'
+    elseif pos.x < 78 then
+        flip = false
+        sprite_type = 'center'
+    elseif pos.x < 104 then
+        flip = true
+        sprite_type = 'leaning'
+    else
+        flip = true
+        sprite_type = 'outside'
+    end
+
+    return {
+        index = plane_sprites[lane][sprite_type],
+        flip = flip
+    }
 end
 
 function _init()
@@ -62,15 +125,14 @@ end
 
 g_color_update = 15
 g_hello_world_color = 1
-g_spr_pos = { x = 10, y = 10 }
-
-g_input = nil
 function _update()
     g_input = poll_input(g_input)
-    g_spr_pos = handle_plane_input(g_input, g_spr_pos)
+    g_plane_pos = handle_plane_input(g_input, g_plane_pos)
 end
 
 function _draw()
     map(0, 0, 0, 0, 32, 32)
-    spr(1, g_spr_pos.x, g_spr_pos.y, 2, 2)
+
+    sprite_data = get_plane_sprite(g_plane_sprites, g_plane_pos, g_plane_size)
+    spr(sprite_data.index, g_plane_pos.x, g_plane_pos.y, 2, 2, sprite_data.flip)
 end
