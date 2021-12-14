@@ -132,8 +132,6 @@ end
 function _init()
 end
 
-g_color_update = 15
-g_hello_world_color = 1
 function _update()
     g_input = poll_input(g_input)
     g_plane_pos = handle_plane_input(g_input, g_plane_pos)
