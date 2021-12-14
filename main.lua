@@ -19,6 +19,24 @@ g_plane_sprites = {
     bottom_lane = { outside = 33, leaning = 35, center = 37 },
 }
 
+g_targets = {}
+
+function rnd_int_range(lower, upper)
+    return flr(rnd(upper - lower)) + lower
+end
+
+function rnd_choice(choices)
+    local choice_count = 0
+    local choice_map = {}
+    for k,v in pairs(choices) do
+        add(choice_map, k)
+        choice_count += 1
+    end
+
+    local rnd_choice_index = rnd_int_range(1, choice_count + 1)
+    return choice_map[rnd_choice_index]
+end
+
 function poll_input(input)
     if input == nil then
         input = {
@@ -129,12 +147,57 @@ function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
     }
 end
 
+function try_spawn_target()
+    -- spawn a target on average about once every second (with random variation)
+    local should_spawn = (rnd_int_range(0, 30) == 1)
+    if not should_spawn then
+        return nil
+    end
+
+    local rnd_x_pos = rnd_int_range(10, 119)
+    local lanes = {
+        top = 20,
+        mid = 64,
+        bottom = 108
+    }
+
+    local rnd_lane = rnd_choice(lanes)
+    local rnd_y_pos = lanes[rnd_lane]
+
+    -- FIXME: 'life' is temporary just so that the points despawn eventually
+    return { x = rnd_x_pos, y = rnd_y_pos, life = 90 }
+end
+
 function _init()
 end
 
 function _update()
+    -- handle using player input to move the plane
     g_input = poll_input(g_input)
     g_plane_pos = handle_plane_input(g_input, g_plane_pos)
+
+    -- handle perodically spawning a new target
+    local maybe_new_target = try_spawn_target()
+    if maybe_new_target != nil then
+        add(g_targets, maybe_new_target)
+    end
+
+    -- FIXME: temporary
+    -- check for any despawned targets
+    for target in all(g_targets) do
+        target.life -= 1
+    end
+
+    -- FIXME: something seems broken here
+    local next_target_index = 1
+    while next_target_index <= count(g_targets) do
+        if g_targets[next_target_index].life == 0 then
+            print("HelloWorld", 0, 0)
+            del(g_targets, next_target_index)
+        else
+            next_target_index += 1
+        end
+    end
 end
 
 function _draw()
@@ -142,4 +205,10 @@ function _draw()
 
     sprite_data = get_plane_sprite(g_plane_sprites, g_plane_pos, g_plane_size)
     spr(sprite_data.index, g_plane_pos.x, g_plane_pos.y, 2, 2, sprite_data.flip)
+
+    -- FIXME: temporary
+    -- draw the targets as a flat projection
+    for target in all(g_targets) do
+        circfill(target.x, target.y, 5, 2)
+    end
 end
