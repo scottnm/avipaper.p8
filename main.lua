@@ -41,6 +41,22 @@ function poll_input(input)
     return input
 end
 
+function handle_plane_input(input, plane_pos)
+    new_pos = {
+        x = plane_pos.x,
+        y = plane_pos.y,
+    }
+
+    if input.btn_left then
+        new_pos.x -= 1
+    end
+    if input.btn_right then
+        new_pos.x += 1
+    end
+
+    return new_pos
+end
+
 function _init()
 end
 
@@ -51,18 +67,7 @@ g_spr_pos = { x = 10, y = 10 }
 g_input = nil
 function _update()
     g_input = poll_input(g_input)
-    if g_input.btn_left then
-        g_spr_pos.x -= 1
-    end
-    if g_input.btn_right then
-        g_spr_pos.x += 1
-    end
-    if g_input.btn_up then
-        g_spr_pos.y -= 1
-    end
-    if g_input.btn_down then
-        g_spr_pos.y += 1
-    end
+    g_spr_pos = handle_plane_input(g_input, g_spr_pos)
 end
 
 function _draw()
