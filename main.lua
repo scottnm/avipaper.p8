@@ -73,5 +73,4 @@ end
 function _draw()
     map(0, 0, 0, 0, 32, 32)
     spr(1, g_spr_pos.x, g_spr_pos.y, 2, 2)
-    print("Hello World", 60, 60, g_hello_world_color + 1)
 end
