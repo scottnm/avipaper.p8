@@ -13,6 +13,13 @@
 c_eye_z = 1
 c_pico_8_screen_size = 128
 
+function get_spritesheet_pos(sprite_n)
+    return {
+        x = (sprite_n % 16) * 8,
+        y = (sprite_n \ 16) * 8
+    }
+end
+
 -- GLOBAL VARIABLES
 g_input = nil
 g_plane_pos = { x = 10, y = 10 }
@@ -25,6 +32,10 @@ g_plane_sprites = {
     mid_lane =    { outside =  7, leaning =  9, center = 11 },
     bottom_lane = { outside = 33, leaning = 35, center = 37 },
 }
+
+g_target_size = { width = 16, height = 16 }
+g_target_spritesheet_index = 13
+g_target_spritesheet_sprite_pos = get_spritesheet_pos(g_target_spritesheet_index)
 
 g_targets = {}
 
@@ -259,13 +270,24 @@ function _draw()
 
 
     -- then draw targets in perspective
+    local perspective_weight = 0.85
     for target in all(g_targets) do
         local perspective_scale = calculate_perspective_scale(target.z, 0, 1)
         -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
-        local perspective_weight = 0.85
-        local perspective_pos = apply_perspective_scale_to_screen_pos(target, perspective_scale, perspective_weight)
-        local target_radius = 5 * perspective_scale
-        circfill(perspective_pos.x, perspective_pos.y, target_radius, 2)
+        -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
+        local target_topleft_corner_pos = { x = target.x - (g_target_size.width / 2), y = target.y - (g_target_size.height / 2) }
+        local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, perspective_weight)
+
+        -- draw the target sprite
+        sspr(
+            g_target_spritesheet_sprite_pos.x,         -- sx
+            g_target_spritesheet_sprite_pos.y,         -- sy
+            g_target_size.width,                       -- sw
+            g_target_size.height,                      -- sh
+            perspective_pos.x,                         -- dx
+            perspective_pos.y,                         -- dy
+            g_target_size.width * perspective_scale,   -- dw
+            g_target_size.height * perspective_scale)  -- dh
     end
 
     -- lastly draw the plane
