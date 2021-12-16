@@ -7,6 +7,11 @@
 -- FURTHER IDEAS:
 -- day night/cycle for the background
 -- wobble on the plane
+-- add clouds that you pass by (very top of the perspective plane) just for visual flair
+-- add trees to the map for obstacle dodging
+-- target tweaks:
+-- 1. add some sort of "fog" effect
+-- 2. make the targets start closer in the fog and move more slowly towards you
 
 -- GLOBAL CONSTANTS
 -- the z coordinate of where the screen/near-plane lives
@@ -191,6 +196,12 @@ function world_space_to_screen_space(world_pos, screen_size)
     }
 end
 
+function apply_weighted_scale(value, scale, weight)
+    local weighted_portion = value * weight * scale
+    local unweighted_portion = value * (1 - weight)
+    return weighted_portion + unweighted_portion
+end
+
 function apply_perspective_scale_to_screen_pos(screen_pos, perspective_scale, perspective_weight)
     assert(perspective_weight >= 0 or weight <= 1.0, 'Perspective weight must be a ratio value between 0 and 1')
 
@@ -198,12 +209,6 @@ function apply_perspective_scale_to_screen_pos(screen_pos, perspective_scale, pe
 
     -- this helper function scales a value but allows for weighting how much that scale applies.
     -- i.e. 'I want to scale down by 75% but only apply that scale at roughly 80% potency'
-    local function apply_weighted_scale(value, scale, weight)
-        local weighted_portion = value * weight * scale
-        local unweighted_portion = value * (1 - weight)
-        return weighted_portion + unweighted_portion
-    end
-
     local scaled_world_pos = {
         x = apply_weighted_scale(world_pos.x, perspective_scale, perspective_weight),
         y = apply_weighted_scale(world_pos.y, perspective_scale, perspective_weight)
@@ -230,6 +235,34 @@ function try_spawn_target()
     local rnd_y_pos = lanes[rnd_lane]
 
     return { x = rnd_x_pos, y = rnd_y_pos, z = -20 }
+end
+
+function draw_target(target)
+    local perspective_pos_weight = 0.85
+    local perspective_size_weight = 0.80
+
+    local perspective_scale = calculate_perspective_scale(target.z, 0, 1)
+    -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
+    -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
+    local target_topleft_corner_pos = { x = target.x - (g_target_size.width / 2), y = target.y - (g_target_size.height / 2) }
+    local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, perspective_pos_weight)
+
+    -- FIXME: rather than using globals maybe this data should be stored on each target
+    local scaled_target_size = {
+        width = apply_weighted_scale(g_target_size.width, perspective_scale, perspective_size_weight),
+        height = apply_weighted_scale(g_target_size.height, perspective_scale, perspective_size_weight),
+    }
+
+    -- draw the target sprite
+    sspr(
+        g_target_spritesheet_sprite_pos.x, -- sx
+        g_target_spritesheet_sprite_pos.y, -- sy
+        g_target_size.width,               -- sw
+        g_target_size.height,              -- sh
+        perspective_pos.x,                 -- dx
+        perspective_pos.y,                 -- dy
+        scaled_target_size.width,          -- dw
+        scaled_target_size.height)         -- dh
 end
 
 function _init()
@@ -268,27 +301,8 @@ function _draw()
     -- first draw the map
     map(0, 0, 0, 0, 32, 32)
 
-
     -- then draw targets in perspective
-    local perspective_weight = 0.85
-    for target in all(g_targets) do
-        local perspective_scale = calculate_perspective_scale(target.z, 0, 1)
-        -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
-        -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
-        local target_topleft_corner_pos = { x = target.x - (g_target_size.width / 2), y = target.y - (g_target_size.height / 2) }
-        local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, perspective_weight)
-
-        -- draw the target sprite
-        sspr(
-            g_target_spritesheet_sprite_pos.x,         -- sx
-            g_target_spritesheet_sprite_pos.y,         -- sy
-            g_target_size.width,                       -- sw
-            g_target_size.height,                      -- sh
-            perspective_pos.x,                         -- dx
-            perspective_pos.y,                         -- dy
-            g_target_size.width * perspective_scale,   -- dw
-            g_target_size.height * perspective_scale)  -- dh
-    end
+    foreach(g_targets, draw_target)
 
     -- lastly draw the plane
     sprite_data = get_plane_sprite(g_plane_sprites, g_plane_pos, g_plane_size)
