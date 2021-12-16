@@ -3,6 +3,7 @@
 -- simulate moving to vertical lanes when o/x buttons
     -- slowly transition between fixed lanes via air currents
 -- only move vertically when hitting aircurrents
+-- constrain how far you can move within the screen
 
 -- FURTHER IDEAS:
 -- day night/cycle for the background
