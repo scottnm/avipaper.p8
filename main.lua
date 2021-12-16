@@ -19,6 +19,9 @@
 -- the z coordinate of where the screen/near-plane lives
 c_eye_z = 1
 c_pico_8_screen_size = 128
+-- N.B. constrain a number of gameplay elements to only happen within some border of the game window.
+-- FIXME NOW: we should update our sprite selection to take into account these new boundaries
+c_gameplay_boundaries = { left = 10, right = 118, top = 10, bottom = 118 }
 
 function get_spritesheet_pos(sprite_n)
     return {
@@ -40,11 +43,14 @@ g_plane_sprites = {
     bottom_lane = { outside = 33, leaning = 35, center = 37 },
 }
 
-g_target_size = { width = 16, height = 16 }
 g_target_spritesheet_index = 13
 g_target_spritesheet_sprite_pos = get_spritesheet_pos(g_target_spritesheet_index)
 
 g_targets = {}
+
+function clamp(lower, value, upper)
+    return mid(lower, value, upper)
+end
 
 function rnd_int_range(lower, upper)
     return flr(rnd(upper - lower)) + lower
@@ -126,25 +132,22 @@ function handle_plane_input(input, plane_pos)
         new_pos.y += 1
     end
 
+    -- constrain the plane to only be able to move within the given game box
+    new_pos.x = clamp(c_gameplay_boundaries.left, new_pos.x, c_gameplay_boundaries.right)
+    -- FIXME: drop this eventually once lane shifting is supported
+    new_pos.y = clamp(c_gameplay_boundaries.top, new_pos.y, c_gameplay_boundaries.bottom)
+
     return new_pos
 end
 
-function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
-
-    -- the plane's position starts at its top left corner.
-    -- For slightly nicer visuals, calcuate the current sprite based off the center of the plane's 'position'
-    local pos = {
-        x = (plane_tl_pos.x + plane_size.width / 2),
-        y = (plane_tl_pos.y + plane_size.height / 2),
-    }
-
+function get_plane_sprite(plane_sprites, plane_pos)
     -- N.B lane bands are NOT perfectly even
     -- top lane and bottom lane are slightly larger than the mid lane
     -- IMO this looks better
     local lane
-    if pos.y < 49 then
+    if plane_pos.y < 52 then
         lane = 'top_lane'
-    elseif pos.y < 79 then
+    elseif plane_pos.y < 76 then
         lane = 'mid_lane'
     else
         lane = 'bottom_lane'
@@ -155,16 +158,16 @@ function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
     -- IMO this looks better
     local flip
     local sprite_lean
-    if pos.x < 34 then
+    if plane_pos.x < 39 then
         flip = false
         sprite_lean = 'outside'
-    elseif pos.x < 47 then
+    elseif plane_pos.x < 50 then
         flip = false
         sprite_lean = 'leaning'
-    elseif pos.x < 81 then
+    elseif plane_pos.x < 79 then
         flip = false
         sprite_lean = 'center'
-    elseif pos.x < 94 then
+    elseif plane_pos.x < 90 then
         flip = true
         sprite_lean = 'leaning'
     else
@@ -176,6 +179,28 @@ function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
         index = plane_sprites[lane][sprite_lean],
         flip = flip
     }
+end
+
+function debug_render_sprite_grid(plane_pos)
+    -- N.B. currently these grid positions are hardcoded here and in get_plane_sprite and must be manually kept in sync.
+    -- probably worth improving in the future
+
+    local divider_color = 7 -- white
+    local plane_pos_marker_color = 8 -- white
+
+    -- lane dividers
+    line(0, 52, c_pico_8_screen_size, 52, divider_color)    -- draw top lane divider
+    line(0, 76, c_pico_8_screen_size, 76, divider_color)    -- draw mid lane divider
+
+    -- lean zone dividers
+    line(39, 0, 39, c_pico_8_screen_size, divider_color) -- left outside zone divider
+    line(50, 0, 50, c_pico_8_screen_size, divider_color) -- left leaning zone divider
+    line(79, 0, 79, c_pico_8_screen_size, divider_color) -- center zone divider
+    line(90, 0, 90, c_pico_8_screen_size, divider_color) -- right leaning zone divider zone divider
+
+    -- render the center of the plane
+    pset(plane_pos.x, plane_pos.y, plane_pos_marker_color)
+
 end
 
 function calculate_perspective_scale(target_z, screen_z, eye_z)
@@ -232,7 +257,14 @@ function try_spawn_target()
         return nil
     end
 
-    local rnd_x_pos = rnd_int_range(10, 119)
+    local target_size = { width = 16, height = 16 }
+
+    -- a target can be generated anywhere within the gameplay zone
+    -- make sure to account for the target's width when determining those borders
+    local rnd_x_pos = rnd_int_range(
+        c_gameplay_boundaries.left + (target_size.width / 2),
+        c_gameplay_boundaries.right + 1 - (target_size.width / 2))
+
     local lanes = {
         top = 20,
         mid = 64,
@@ -242,31 +274,45 @@ function try_spawn_target()
     local rnd_lane = rnd_choice(lanes)
     local rnd_y_pos = lanes[rnd_lane]
 
-    return { x = rnd_x_pos, y = rnd_y_pos, z = -20 }
+    return {
+        pos = { x = rnd_x_pos, y = rnd_y_pos, z = -20 },
+        size = target_size
+    }
+end
+
+function draw_plane(pos, size, plane_sprites)
+    sprite_data = get_plane_sprite(plane_sprites, pos)
+
+    topleft_corner_pos = {
+        x = pos.x - (size.width / 2),
+        y = pos.y - (size.height / 2),
+    }
+    spr(sprite_data.index, topleft_corner_pos.x, topleft_corner_pos.y, 2, 2, sprite_data.flip)
 end
 
 function draw_target(target)
     local perspective_pos_weight = 0.85
     local perspective_size_weight = 0.80
 
-    local perspective_scale = calculate_perspective_scale(target.z, 0, 1)
+    local perspective_scale = calculate_perspective_scale(target.pos.z, 0, 1)
     -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
     -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
-    local target_topleft_corner_pos = { x = target.x - (g_target_size.width / 2), y = target.y - (g_target_size.height / 2) }
+    local target_topleft_corner_pos = {
+        x = target.pos.x - (target.size.width / 2),
+        y = target.pos.y - (target.size.height / 2) }
     local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, perspective_pos_weight)
 
-    -- FIXME: rather than using globals maybe this data should be stored on each target
     local scaled_target_size = {
-        width = apply_weighted_scale(g_target_size.width, perspective_scale, perspective_size_weight),
-        height = apply_weighted_scale(g_target_size.height, perspective_scale, perspective_size_weight),
+        width = apply_weighted_scale(target.size.width, perspective_scale, perspective_size_weight),
+        height = apply_weighted_scale(target.size.height, perspective_scale, perspective_size_weight),
     }
 
     -- draw the target sprite
     sspr(
         g_target_spritesheet_sprite_pos.x, -- sx
         g_target_spritesheet_sprite_pos.y, -- sy
-        g_target_size.width,               -- sw
-        g_target_size.height,              -- sh
+        target.size.width,                 -- sw
+        target.size.height,                -- sh
         perspective_pos.x,                 -- dx
         perspective_pos.y,                 -- dy
         scaled_target_size.width,          -- dw
@@ -291,13 +337,13 @@ function _update()
     for target in all(g_targets) do
         -- N.B. we need this to be a power of 2 so that it will eventually sum
         -- to exactly 0 without any precision issues.
-        target.z += (1/16)
+        target.pos.z += (1/16)
     end
 
     -- check for any despawned targets
     local next_target_index = 1
     while next_target_index <= count(g_targets) do
-        if g_targets[next_target_index].z == 0 then
+        if g_targets[next_target_index].pos.z == 0 then
             deli(g_targets, next_target_index)
         else
             next_target_index += 1
@@ -313,6 +359,8 @@ function _draw()
     foreach(g_targets, draw_target)
 
     -- lastly draw the plane
-    sprite_data = get_plane_sprite(g_plane_sprites, g_plane_pos, g_plane_size)
-    spr(sprite_data.index, g_plane_pos.x, g_plane_pos.y, 2, 2, sprite_data.flip)
+    draw_plane(g_plane_pos, g_plane_size, g_plane_sprites)
+
+    -- uncomment this to draw a debug grid showing where plane sprites change
+    -- debug_render_sprite_grid(g_plane_pos)
 end
