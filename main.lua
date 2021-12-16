@@ -1,4 +1,5 @@
 -- TODO:
+-- add header comments to all functions describing what they do in "plane" english ☜(ﾟヮﾟ☜)
 -- projecticles come out of screen
 -- simulate moving to vertical lanes when o/x buttons
     -- slowly transition between fixed lanes via air currents
@@ -137,36 +138,42 @@ function get_plane_sprite(plane_sprites, plane_tl_pos, plane_size)
         y = (plane_tl_pos.y + plane_size.height / 2),
     }
 
+    -- N.B lane bands are NOT perfectly even
+    -- top lane and bottom lane are slightly larger than the mid lane
+    -- IMO this looks better
     local lane
-    if pos.y < 43 then
+    if pos.y < 49 then
         lane = 'top_lane'
-    elseif pos.y < 86 then
+    elseif pos.y < 79 then
         lane = 'mid_lane'
     else
         lane = 'bottom_lane'
     end
 
+    -- N.B. the different zones which correspond to each type of sprite 'lean' are not even
+    -- 'outside' and 'center' are wider than 'leaning'.
+    -- IMO this looks better
     local flip
-    local sprite_type
-    if pos.x < 26 then
+    local sprite_lean
+    if pos.x < 34 then
         flip = false
-        sprite_type = 'outside'
-    elseif pos.x < 52 then
+        sprite_lean = 'outside'
+    elseif pos.x < 47 then
         flip = false
-        sprite_type = 'leaning'
-    elseif pos.x < 78 then
+        sprite_lean = 'leaning'
+    elseif pos.x < 81 then
         flip = false
-        sprite_type = 'center'
-    elseif pos.x < 104 then
+        sprite_lean = 'center'
+    elseif pos.x < 94 then
         flip = true
-        sprite_type = 'leaning'
+        sprite_lean = 'leaning'
     else
         flip = true
-        sprite_type = 'outside'
+        sprite_lean = 'outside'
     end
 
     return {
-        index = plane_sprites[lane][sprite_type],
+        index = plane_sprites[lane][sprite_lean],
         flip = flip
     }
 end
