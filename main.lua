@@ -1,10 +1,6 @@
 -- TODO:
 -- add header comments to all functions describing what they do in "plane" english ☜(ﾟヮﾟ☜)
--- projecticles come out of screen
--- simulate moving to vertical lanes when o/x buttons
-    -- slowly transition between fixed lanes via air currents
--- only move vertically when hitting aircurrents
--- constrain how far you can move within the screen
+-- only move vertically when hitting aircurrents (replace 'faux' movement)
 
 -- FURTHER IDEAS:
 -- day night/cycle for the background
@@ -22,6 +18,11 @@ c_pico_8_screen_size = 128
 -- N.B. constrain a number of gameplay elements to only happen within some border of the game window.
 -- FIXME NOW: we should update our sprite selection to take into account these new boundaries
 c_gameplay_boundaries = { left = 10, right = 118, top = 10, bottom = 118 }
+c_lanes = {
+    top = 20,
+    mid = 64,
+    bottom = 108
+}
 
 function get_spritesheet_pos(sprite_n)
     return {
@@ -32,7 +33,8 @@ end
 
 -- GLOBAL VARIABLES
 g_input = nil
-g_plane_pos = { x = 10, y = 10 }
+g_plane_pos = nil
+g_plane_vertical_slide = nil
 g_plane_size = { width = 16, height = 16 }
 g_plane_sprites = {
     -- contains a separate table for each 'lane' that the plane can fly in
@@ -111,33 +113,76 @@ function poll_input(input)
     return input
 end
 
-function handle_plane_input(input, plane_pos)
-    local new_pos = {
-        x = plane_pos.x,
-        y = plane_pos.y,
-    }
-
+function move_plane_horizontal(input, plane_pos_x, plane_size, move_speed)
+    local new_x = plane_pos_x
     if input.btn_left then
-        new_pos.x -= 1
+        new_x -= move_speed
     end
     if input.btn_right then
-        new_pos.x += 1
-    end
-
-    -- FIXME: drop these eventually
-    if input.btn_up then
-        new_pos.y -= 1
-    end
-    if input.btn_down then
-        new_pos.y += 1
+        new_x += move_speed
     end
 
     -- constrain the plane to only be able to move within the given game box
-    new_pos.x = clamp(c_gameplay_boundaries.left, new_pos.x, c_gameplay_boundaries.right)
-    -- FIXME: drop this eventually once lane shifting is supported
-    new_pos.y = clamp(c_gameplay_boundaries.top, new_pos.y, c_gameplay_boundaries.bottom)
+    new_x = clamp(
+        c_gameplay_boundaries.left + (plane_size.width / 2),
+        new_x,
+        c_gameplay_boundaries.right - (plane_size.width / 2))
 
-    return new_pos
+    return new_x
+end
+
+function move_plane_vertical(input, plane_pos, lanes, move_speed)
+    local dest_y
+    if input.btn_up and input.btn_up_change then
+        if plane_pos.y <= lanes.top then
+            -- we are in the top lane and tried to move up.
+            -- noop
+            return nil
+        elseif plane_pos.y <= lanes.mid then
+            dest_y = lanes.top
+        else
+            dest_y = lanes.mid
+        end
+    elseif input.btn_down and input.btn_down_change then
+        if plane_pos.y <= lanes.top then
+            dest_y = lanes.mid
+        elseif plane_pos.y <= lanes.mid then
+            dest_y = lanes.bottom
+        else
+            -- we are in the bottom lane and tried to move down.
+            -- noop
+            return nil
+        end
+    else
+        -- neither up nor down was just pressed
+        -- noop
+        return nil
+    end
+
+    local move_to_next_lane =
+        function()
+            assert(move_speed != 0, "Attempted to perform a move without speed")
+
+            local update_count = 0
+            local total_update_count = 30 / move_speed
+            local original_y = plane_pos.y
+            while true do
+                update_count += 1
+                local move_completion_ratio = 1 - (update_count / total_update_count)
+                -- cubic ease out
+                local ease_out_factor = 1 - (move_completion_ratio * move_completion_ratio * move_completion_ratio)
+                local cumulative_offset = (dest_y - original_y) * ease_out_factor
+                plane_pos.y = cumulative_offset + original_y
+
+                if plane_pos.y != dest_y then
+                    yield()
+                else
+                    break
+                end
+            end
+        end
+
+    return cocreate(move_to_next_lane)
 end
 
 function get_plane_sprite(plane_sprites, plane_pos)
@@ -250,7 +295,7 @@ function apply_perspective_scale_to_screen_pos(screen_pos, perspective_scale, pe
     return world_space_to_screen_space(scaled_world_pos, c_pico_8_screen_size)
 end
 
-function try_spawn_target()
+function try_spawn_target(lanes)
     -- spawn a target on average about once every second (with random variation)
     local should_spawn = (rnd_int_range(0, 30) == 1)
     if not should_spawn then
@@ -264,12 +309,6 @@ function try_spawn_target()
     local rnd_x_pos = rnd_int_range(
         c_gameplay_boundaries.left + (target_size.width / 2),
         c_gameplay_boundaries.right + 1 - (target_size.width / 2))
-
-    local lanes = {
-        top = 20,
-        mid = 64,
-        bottom = 108
-    }
 
     local rnd_lane = rnd_choice(lanes)
     local rnd_y_pos = lanes[rnd_lane]
@@ -320,15 +359,37 @@ function draw_target(target)
 end
 
 function _init()
+    -- initialize the plane's position to the center of the bottom lane
+    g_plane_pos = {
+        x = c_pico_8_screen_size / 2,
+        y = c_lanes.bottom
+    }
 end
 
 function _update()
     -- handle using player input to move the plane
     g_input = poll_input(g_input)
-    g_plane_pos = handle_plane_input(g_input, g_plane_pos)
+    g_plane_pos.x = move_plane_horizontal(g_input, g_plane_pos.x, g_plane_size, 1.5)
+
+    if g_plane_vertical_slide == nil then
+        g_plane_vertical_slide = move_plane_vertical(g_input, g_plane_pos, c_lanes, 1.1)
+    end
+
+    if g_plane_vertical_slide != nil then
+        assert(costatus(g_plane_vertical_slide) != 'dead')
+        local active, exception = coresume(g_plane_vertical_slide)
+        if exception then
+            printh(exception)
+            printh(trace(g_plane_vertical_slide, exception))
+        end
+
+        if costatus(g_plane_vertical_slide) == 'dead' then
+            g_plane_vertical_slide = nil
+        end
+    end
 
     -- handle perodically spawning a new target
-    local maybe_new_target = try_spawn_target()
+    local maybe_new_target = try_spawn_target(c_lanes)
     if maybe_new_target != nil then
         add(g_targets, maybe_new_target)
     end
