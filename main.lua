@@ -62,6 +62,12 @@ function rnd_int_range(lower, upper)
     return flr(rnd(upper - lower)) + lower
 end
 
+function get_distance(p1, p2)
+    local x_diff = p1.x - p2.x
+    local y_diff = p1.y - p2.y
+    return sqrt((x_diff * x_diff) + (y_diff * y_diff))
+end
+
 function rnd_choice(choices)
     local choice_count = 0
     local choice_map = {}
@@ -323,6 +329,34 @@ function try_spawn_target(lanes)
     }
 end
 
+function handle_target_collisions(plane_pos, targets)
+    local next_target_index = 1
+    while next_target_index <= count(targets) do
+        local target_plane_distance = get_distance(plane_pos, targets[next_target_index].pos)
+        if target_plane_distance <= 1 then
+            g_score += 100
+            deli(targets, next_target_index)
+        elseif target_plane_distance <= 4 then
+            g_score += 10
+            deli(targets, next_target_index)
+        else
+            -- target and plane haven't collided. move onto next target
+            next_target_index += 1
+        end
+    end
+end
+
+function check_for_despawned_targets(targets)
+    local next_target_index = 1
+    while next_target_index <= count(targets) do
+        if targets[next_target_index].pos.z == 0 then
+            deli(targets, next_target_index)
+        else
+            next_target_index += 1
+        end
+    end
+end
+
 function draw_plane(pos, size, plane_sprites)
     sprite_data = get_plane_sprite(plane_sprites, pos)
 
@@ -405,15 +439,11 @@ function _update()
         target.pos.z += (1/16)
     end
 
+    -- check for any target collisions
+    handle_target_collisions(g_plane_pos, g_targets)
+
     -- check for any despawned targets
-    local next_target_index = 1
-    while next_target_index <= count(g_targets) do
-        if g_targets[next_target_index].pos.z == 0 then
-            deli(g_targets, next_target_index)
-        else
-            next_target_index += 1
-        end
-    end
+    check_for_despawned_targets(g_targets)
 end
 
 function _draw()
