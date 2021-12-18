@@ -46,53 +46,44 @@ g_plane_sprites = {
     -- the right side is done by flipping the left sprites
     top_lane = {
         outside = {
-            index = 1,
-            -- (8,0)->(18,12)
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 8, y = 0 },
+            nose_offset = { x = 10, y = 12 }
         },
         leaning = {
-            -- (24,0)->(33,11)
-            index = 3,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 24, y = 0 },
+            nose_offset = { x = 9, y = 11 }
         },
         center = {
-            -- (40,0)->(47,11)
-            index = 5,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 40, y = 0 },
+            nose_offset = { x = 7, y = 11 }
         },
     },
     mid_lane= {
         outside = {
-            -- (56,0)->(69,8)
-            index = 7,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 56, y = 0 },
+            nose_offset = { x = 13, y = 8 }
         },
         leaning = {
-            -- (72,0)->(85,8)
-            index = 9,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 72, y = 0 },
+            nose_offset = { x = 13, y = 8 }
         },
         center = {
-            -- (72,0)->(85,8)
-            index = 11,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 88, y = 0 },
+            nose_offset = { x = 7, y = 8 }
         },
     },
     bottom_lane = {
         outside = {
-            -- (8,16)->(23,16)
-            index = 33,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 8, y = 16 },
+            nose_offset = { x = 15, y = 0 }
         },
         leaning = {
-            -- (24,16)->(34,16)
-            index = 35,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 24, y = 16 },
+            nose_offset = { x = 10, y = 0 }
         },
         center = {
-            -- (40,16)->(47,16)
-            index = 37,
-            center_offset = { x = 0, y = 0 }
+            origin = { x = 40, y = 16 },
+            nose_offset = { x = 7, y = 0 }
         },
     },
 }
@@ -280,17 +271,17 @@ function get_plane_sprite(plane_sprites, plane_pos)
     end
 
     return {
-        index = plane_sprites[lane][sprite_lean].index,
+        origin = plane_sprites[lane][sprite_lean].origin,
+        nose_offset = plane_sprites[lane][sprite_lean].nose_offset,
         flip = flip
     }
 end
 
-function debug_render_sprite_grid(plane_pos)
+function debug_render_sprite_grid()
     -- N.B. currently these grid positions are hardcoded here and in get_plane_sprite and must be manually kept in sync.
     -- probably worth improving in the future
 
     local divider_color = 7 -- white
-    local plane_pos_marker_color = 8 -- white
 
     -- lane dividers
     line(0, 52, c_pico_8_screen_size, 52, divider_color)    -- draw top lane divider
@@ -301,8 +292,11 @@ function debug_render_sprite_grid(plane_pos)
     line(50, 0, 50, c_pico_8_screen_size, divider_color) -- left leaning zone divider
     line(79, 0, 79, c_pico_8_screen_size, divider_color) -- center zone divider
     line(90, 0, 90, c_pico_8_screen_size, divider_color) -- right leaning zone divider zone divider
+end
 
+function debug_render_plane_nose(plane_pos)
     -- render the center of the plane
+    local plane_pos_marker_color = 8 -- white
     pset(plane_pos.x, plane_pos.y, plane_pos_marker_color)
 
 end
@@ -410,13 +404,30 @@ function check_for_despawned_targets(targets)
 end
 
 function draw_plane(pos, size, plane_sprites)
-    sprite_data = get_plane_sprite(plane_sprites, pos)
+    local sprite_data = get_plane_sprite(plane_sprites, pos)
 
-    topleft_corner_pos = {
-        x = pos.x - (size.width / 2),
-        y = pos.y - (size.height / 2),
+    nose_offset_x = sprite_data.nose_offset.x
+    nose_offset_y = sprite_data.nose_offset.y
+    -- if we flip the sprite, we also have to flip the nose offset
+    if sprite_data.flip then
+        nose_offset_x = 16 - nose_offset_x - 1
+    end
+
+    local pos_centered_on_nose = {
+        x = pos.x - nose_offset_x,
+        y = pos.y - nose_offset_y
     }
-    spr(sprite_data.index, topleft_corner_pos.x, topleft_corner_pos.y, 2, 2, sprite_data.flip)
+
+    sspr(
+        sprite_data.origin.x,
+        sprite_data.origin.y,
+        16,
+        16,
+        pos_centered_on_nose.x,
+        pos_centered_on_nose.y,
+        size.width,
+        size.height,
+        sprite_data.flip)
 end
 
 function draw_target(target)
@@ -510,7 +521,9 @@ function _draw()
     draw_plane(g_plane_pos, g_plane_size, g_plane_sprites)
 
     -- uncomment this to draw a debug grid showing where plane sprites change
-    -- debug_render_sprite_grid(g_plane_pos)
+    -- debug_render_sprite_grid()
+    -- uncomment this to draw a debug marker showing where the plane's nose is being registered
+    -- debug_render_plane_nose(g_plane_pos)
 
     -- draw the score
     print("score: "..g_score, 0, 0, 7)
