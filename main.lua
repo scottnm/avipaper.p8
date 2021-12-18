@@ -307,11 +307,18 @@ function draw_plane_guideline(plane_pos)
         z = c_target_spawn_z
     }
 
-    local perspective_scale = calculate_perspective_scale(nose_line_endpos.z, 0, 1)
-    local nose_line_perspective_endpos = apply_perspective_scale_to_screen_pos(nose_line_endpos, perspective_scale, c_perspective_pos_weight)
-
-    -- draw a perspective skewed line from the plane's nose to the target spawn wall
-    line(plane_pos.x, plane_pos.y, nose_line_perspective_endpos.x, nose_line_perspective_endpos.y, 7)
+    -- draw a perspective skewed dotted line from the plane's nose to the target spawn wall
+    -- we simulate a dotted line by drawing 10 evenly spaced points in worldspace
+    for i=1,10 do
+        point_on_dotted_line = {
+            x = plane_pos.x,
+            y = plane_pos.y,
+            z = (c_target_spawn_z * i / 10)
+        }
+        local perspective_scale = calculate_perspective_scale(point_on_dotted_line.z, 0, 1)
+        local perspective_line_point = apply_perspective_scale_to_screen_pos(point_on_dotted_line, perspective_scale, c_perspective_pos_weight)
+        pset(perspective_line_point.x, perspective_line_point.y, 7)
+    end
 end
 
 function debug_render_plane_nose(plane_pos)
