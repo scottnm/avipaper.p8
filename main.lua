@@ -17,8 +17,12 @@
 
 -- GLOBAL CONSTANTS
 -- the z coordinate of where the screen/near-plane lives
+c_target_spawn_z = -20
 c_eye_z = 1
 c_pico_8_screen_size = 128
+-- these 'perspective weights' help us fudge our perspective view so it's not as strong and reads more easily. A higher weight value means more perspective distortion. A lower weight value means less perspective distortion. A weight value of 0 means no distortion (i.e. everything is rendered flatly)
+c_perspective_pos_weight = 0.85
+c_perspective_size_weight = 0.80
 -- N.B. constrain a number of gameplay elements to only happen within some border of the game window.
 -- FIXME NOW: we should update our sprite selection to take into account these new boundaries
 c_gameplay_boundaries = { left = 10, right = 118, top = 10, bottom = 118 }
@@ -294,11 +298,40 @@ function debug_render_sprite_grid()
     line(90, 0, 90, c_pico_8_screen_size, divider_color) -- right leaning zone divider zone divider
 end
 
+function draw_plane_guideline(plane_pos)
+    local c_perspective_pos_weight = 0.85 -- hardcoded to match what's in draw_target
+
+    nose_line_endpos = {
+        x = plane_pos.x,
+        y = plane_pos.y,
+        z = c_target_spawn_z
+    }
+
+    local perspective_scale = calculate_perspective_scale(nose_line_endpos.z, 0, 1)
+    local nose_line_perspective_endpos = apply_perspective_scale_to_screen_pos(nose_line_endpos, perspective_scale, c_perspective_pos_weight)
+
+    -- draw a perspective skewed line from the plane's nose to the target spawn wall
+    line(plane_pos.x, plane_pos.y, nose_line_perspective_endpos.x, nose_line_perspective_endpos.y, 7)
+end
+
 function debug_render_plane_nose(plane_pos)
+    local c_perspective_pos_weight = 0.85 -- hardcoded to match what's in draw_target
+
+    nose_line_endpos = {
+        x = plane_pos.x,
+        y = plane_pos.y,
+        z = c_target_spawn_z
+    }
+
+    local perspective_scale = calculate_perspective_scale(nose_line_endpos.z, 0, 1)
+    local nose_line_perspective_endpos = apply_perspective_scale_to_screen_pos(nose_line_endpos, perspective_scale, c_perspective_pos_weight)
+
+    -- draw a perspective skewed line from the plane's nose to the target spawn wall
+    line(plane_pos.x, plane_pos.y, nose_line_perspective_endpos.x, nose_line_perspective_endpos.y, 7)
+
     -- render the center of the plane
     local plane_pos_marker_color = 8 -- white
     pset(plane_pos.x, plane_pos.y, plane_pos_marker_color)
-
 end
 
 function calculate_perspective_scale(target_z, screen_z, eye_z)
@@ -367,7 +400,7 @@ function try_spawn_target(lanes)
     local rnd_y_pos = lanes[rnd_lane]
 
     return {
-        pos = { x = rnd_x_pos, y = rnd_y_pos, z = -20 },
+        pos = { x = rnd_x_pos, y = rnd_y_pos, z = c_target_spawn_z },
         size = target_size
     }
 end
@@ -431,20 +464,17 @@ function draw_plane(pos, size, plane_sprites)
 end
 
 function draw_target(target)
-    local perspective_pos_weight = 0.85
-    local perspective_size_weight = 0.80
-
     local perspective_scale = calculate_perspective_scale(target.pos.z, 0, 1)
     -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
     -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
     local target_topleft_corner_pos = {
         x = target.pos.x - (target.size.width / 2),
         y = target.pos.y - (target.size.height / 2) }
-    local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, perspective_pos_weight)
+    local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, c_perspective_pos_weight)
 
     local scaled_target_size = {
-        width = apply_weighted_scale(target.size.width, perspective_scale, perspective_size_weight),
-        height = apply_weighted_scale(target.size.height, perspective_scale, perspective_size_weight),
+        width = apply_weighted_scale(target.size.width, perspective_scale, c_perspective_size_weight),
+        height = apply_weighted_scale(target.size.height, perspective_scale, c_perspective_size_weight),
     }
 
     -- draw the target sprite
@@ -519,6 +549,7 @@ function _draw()
 
     -- draw the plane
     draw_plane(g_plane_pos, g_plane_size, g_plane_sprites)
+    draw_plane_guideline(g_plane_pos)
 
     -- uncomment this to draw a debug grid showing where plane sprites change
     -- debug_render_sprite_grid()
