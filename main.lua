@@ -44,9 +44,57 @@ g_plane_sprites = {
     -- contains a separate table for each 'lane' that the plane can fly in
     -- each lane contains 3 sprite indices: 1 for the far left, one for left, and one for center
     -- the right side is done by flipping the left sprites
-    top_lane =    { outside =  1, leaning =  3, center =  5 },
-    mid_lane =    { outside =  7, leaning =  9, center = 11 },
-    bottom_lane = { outside = 33, leaning = 35, center = 37 },
+    top_lane = {
+        outside = {
+            index = 1,
+            -- (8,0)->(18,12)
+            center_offset = { x = 0, y = 0 }
+        },
+        leaning = {
+            -- (24,0)->(33,11)
+            index = 3,
+            center_offset = { x = 0, y = 0 }
+        },
+        center = {
+            -- (40,0)->(47,11)
+            index = 5,
+            center_offset = { x = 0, y = 0 }
+        },
+    },
+    mid_lane= {
+        outside = {
+            -- (56,0)->(69,8)
+            index = 7,
+            center_offset = { x = 0, y = 0 }
+        },
+        leaning = {
+            -- (72,0)->(85,8)
+            index = 9,
+            center_offset = { x = 0, y = 0 }
+        },
+        center = {
+            -- (72,0)->(85,8)
+            index = 11,
+            center_offset = { x = 0, y = 0 }
+        },
+    },
+    bottom_lane = {
+        outside = {
+            -- (8,16)->(23,16)
+            index = 33,
+            center_offset = { x = 0, y = 0 }
+        },
+        leaning = {
+            -- (24,16)->(34,16)
+            index = 35,
+            center_offset = { x = 0, y = 0 }
+        },
+        center = {
+            -- (40,16)->(47,16)
+            index = 37,
+            center_offset = { x = 0, y = 0 }
+        },
+    },
 }
 g_score = 0
 
@@ -232,7 +280,7 @@ function get_plane_sprite(plane_sprites, plane_pos)
     end
 
     return {
-        index = plane_sprites[lane][sprite_lean],
+        index = plane_sprites[lane][sprite_lean].index,
         flip = flip
     }
 end
