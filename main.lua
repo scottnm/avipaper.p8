@@ -418,11 +418,11 @@ function handle_target_collisions(plane_pos, targets)
         local next_target = targets[next_target_index]
         if next_target.pos.z == plane_pos.z then
             local target_plane_distance = get_2d_distance(plane_pos, next_target.pos)
-            if target_plane_distance <= 1 then
+            if target_plane_distance <= 4 then
                 sfx(1)
                 g_score += 100
                 deli(targets, next_target_index)
-            elseif target_plane_distance <= 4 then
+            elseif target_plane_distance <= 8 then
                 sfx(2)
                 g_score += 10
                 deli(targets, next_target_index)
@@ -480,15 +480,16 @@ function draw_target(target)
     local perspective_scale = calculate_perspective_scale(target.pos.z, 0, c_eye_z)
     -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
     -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
-    local target_topleft_corner_pos = {
-        x = target.pos.x - (target.size.width / 2),
-        y = target.pos.y - (target.size.height / 2) }
-    local perspective_pos = apply_perspective_scale_to_screen_pos(target_topleft_corner_pos, perspective_scale, c_perspective_pos_weight)
-
+    local perspective_pos = apply_perspective_scale_to_screen_pos(target.pos, perspective_scale, c_perspective_pos_weight)
     local scaled_target_size = {
         width = apply_weighted_scale(target.size.width, perspective_scale, c_perspective_size_weight),
         height = apply_weighted_scale(target.size.height, perspective_scale, c_perspective_size_weight),
     }
+
+    local target_topleft_corner_pos = {
+        x = perspective_pos.x - (scaled_target_size.width / 2),
+        y = perspective_pos.y - (scaled_target_size.height / 2) }
+
 
     -- draw the target sprite
     sspr(
@@ -496,8 +497,8 @@ function draw_target(target)
         g_target_spritesheet_sprite_pos.y, -- sy
         target.size.width,                 -- sw
         target.size.height,                -- sh
-        perspective_pos.x,                 -- dx
-        perspective_pos.y,                 -- dy
+        target_topleft_corner_pos.x,       -- dx
+        target_topleft_corner_pos.y,       -- dy
         scaled_target_size.width,          -- dw
         scaled_target_size.height)         -- dh
 end
