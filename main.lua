@@ -314,7 +314,7 @@ function draw_plane_guideline(plane_pos)
             y = plane_pos.y,
             z = (c_target_spawn_z * i / 10)
         }
-        local perspective_scale = calculate_perspective_scale(point_on_dotted_line.z, 0, 1)
+        local perspective_scale = calculate_perspective_scale(point_on_dotted_line.z, 0, c_eye_z)
         local perspective_line_point = apply_perspective_scale_to_screen_pos(point_on_dotted_line, perspective_scale, c_perspective_pos_weight)
         pset(perspective_line_point.x, perspective_line_point.y, 7)
     end
@@ -329,7 +329,7 @@ function debug_render_plane_nose(plane_pos)
         z = c_target_spawn_z
     }
 
-    local perspective_scale = calculate_perspective_scale(nose_line_endpos.z, 0, 1)
+    local perspective_scale = calculate_perspective_scale(nose_line_endpos.z, 0, c_eye_z)
     local nose_line_perspective_endpos = apply_perspective_scale_to_screen_pos(nose_line_endpos, perspective_scale, c_perspective_pos_weight)
 
     -- draw a perspective skewed line from the plane's nose to the target spawn wall
@@ -476,7 +476,7 @@ function draw_plane(pos, size, plane_sprites)
 end
 
 function draw_target(target)
-    local perspective_scale = calculate_perspective_scale(target.pos.z, 0, 1)
+    local perspective_scale = calculate_perspective_scale(target.pos.z, 0, c_eye_z)
     -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
     -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
     local target_topleft_corner_pos = {
