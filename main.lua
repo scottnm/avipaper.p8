@@ -17,9 +17,10 @@
 
 -- GLOBAL CONSTANTS
 -- the z coordinate of where the screen/near-plane lives
-c_target_spawn_z = -20
-c_eye_z = 1
+c_target_spawn_z = -50
+c_eye_z = 7
 c_pico_8_screen_size = 128
+c_target_speed = 1/4
 -- these 'perspective weights' help us fudge our perspective view so it's not as strong and reads more easily. A higher weight value means more perspective distortion. A lower weight value means less perspective distortion. A weight value of 0 means no distortion (i.e. everything is rendered flatly)
 c_perspective_pos_weight = 0.85
 c_perspective_size_weight = 0.80
@@ -501,6 +502,15 @@ function draw_target(target)
         scaled_target_size.height)         -- dh
 end
 
+function render_debug_target_centers(target)
+    local perspective_scale = calculate_perspective_scale(target.pos.z, 0, c_eye_z)
+    -- fudge the numbers here for a better perspective view. True perspective view makes the dots appear too close to the center of the screen when they start
+    -- the target's position is at its center but we need its topleft coordinate to do the sprite draw
+    local perspective_pos = apply_perspective_scale_to_screen_pos(target.pos, perspective_scale, c_perspective_pos_weight)
+
+    pset(perspective_pos.x, perspective_pos.y, 4)
+end
+
 function _init()
     -- initialize the plane's position to the center of the bottom lane
     g_plane_pos = {
@@ -542,7 +552,7 @@ function _update()
     for target in all(g_targets) do
         -- N.B. we need this to be a power of 2 so that it will eventually sum
         -- to exactly 0 without any precision issues.
-        target.pos.z += (1/16)
+        target.pos.z += c_target_speed
     end
 
     -- check for any target collisions
@@ -558,6 +568,7 @@ function _draw()
 
     -- draw targets in perspective
     foreach(g_targets, draw_target)
+    -- foreach(g_targets, render_debug_target_centers)
 
     -- draw the plane
     draw_plane(g_plane_pos, g_plane_size, g_plane_sprites)
