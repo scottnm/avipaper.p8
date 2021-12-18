@@ -105,11 +105,10 @@ function rnd_int_range(lower, upper)
     return flr(rnd(upper - lower)) + lower
 end
 
-function get_3d_distance(p1, p2)
+function get_2d_distance(p1, p2)
     local x_diff = p1.x - p2.x
     local y_diff = p1.y - p2.y
-    local z_diff = p1.z - p2.z
-    return sqrt((x_diff * x_diff) + (y_diff * y_diff) + (z_diff * z_diff))
+    return sqrt((x_diff * x_diff) + (y_diff * y_diff))
 end
 
 function rnd_choice(choices)
@@ -415,15 +414,21 @@ end
 function handle_target_collisions(plane_pos, targets)
     local next_target_index = 1
     while next_target_index <= count(targets) do
-        local target_plane_distance = get_3d_distance(plane_pos, targets[next_target_index].pos)
-        if target_plane_distance <= 1 then
-            sfx(1)
-            g_score += 100
-            deli(targets, next_target_index)
-        elseif target_plane_distance <= 4 then
-            sfx(2)
-            g_score += 10
-            deli(targets, next_target_index)
+        local next_target = targets[next_target_index]
+        if next_target.pos.z == plane_pos.z then
+            local target_plane_distance = get_2d_distance(plane_pos, next_target.pos)
+            if target_plane_distance <= 1 then
+                sfx(1)
+                g_score += 100
+                deli(targets, next_target_index)
+            elseif target_plane_distance <= 4 then
+                sfx(2)
+                g_score += 10
+                deli(targets, next_target_index)
+            else
+                -- target and plane haven't collided. move onto next target
+                next_target_index += 1
+            end
         else
             -- target and plane haven't collided. move onto next target
             next_target_index += 1
