@@ -18,6 +18,7 @@
 -- GLOBAL CONSTANTS
 -- the z coordinate of where the screen/near-plane lives
 c_target_spawn_z = -50
+c_target_despawn_z = 5
 c_eye_z = 7
 c_pico_8_screen_size = 128
 c_target_speed = 1/4
@@ -344,7 +345,6 @@ end
 function calculate_perspective_scale(target_z, screen_z, eye_z)
     assert(eye_z > target_z, 'The camera (eye_z) must be in front of the target (target_z)')
     assert(eye_z > screen_z, 'The camera (eye_z) must be in front of the screen (screen_z)')
-    assert(screen_z >= target_z, 'The screen (screen_z) must be in front of the target (target_z)')
     local world_space_z_distance = eye_z - target_z
     local screen_space_z_distance = eye_z - screen_z
     local scale = screen_space_z_distance / world_space_z_distance
@@ -416,7 +416,7 @@ function handle_target_collisions(plane_pos, targets)
     local next_target_index = 1
     while next_target_index <= count(targets) do
         local next_target = targets[next_target_index]
-        if next_target.pos.z == plane_pos.z then
+        if next_target.pos.z >= plane_pos.z then
             local target_plane_distance = get_2d_distance(plane_pos, next_target.pos)
             if target_plane_distance <= 4 then
                 sfx(1)
@@ -440,7 +440,7 @@ end
 function check_for_despawned_targets(targets)
     local next_target_index = 1
     while next_target_index <= count(targets) do
-        if targets[next_target_index].pos.z == 0 then
+        if targets[next_target_index].pos.z >= c_target_despawn_z then
             sfx(0)
             deli(targets, next_target_index)
         else
