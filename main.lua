@@ -62,10 +62,11 @@ function rnd_int_range(lower, upper)
     return flr(rnd(upper - lower)) + lower
 end
 
-function get_distance(p1, p2)
+function get_3d_distance(p1, p2)
     local x_diff = p1.x - p2.x
     local y_diff = p1.y - p2.y
-    return sqrt((x_diff * x_diff) + (y_diff * y_diff))
+    local z_diff = p1.z - p2.z
+    return sqrt((x_diff * x_diff) + (y_diff * y_diff) + (z_diff * z_diff))
 end
 
 function rnd_choice(choices)
@@ -332,11 +333,13 @@ end
 function handle_target_collisions(plane_pos, targets)
     local next_target_index = 1
     while next_target_index <= count(targets) do
-        local target_plane_distance = get_distance(plane_pos, targets[next_target_index].pos)
+        local target_plane_distance = get_3d_distance(plane_pos, targets[next_target_index].pos)
         if target_plane_distance <= 1 then
+            sfx(1)
             g_score += 100
             deli(targets, next_target_index)
         elseif target_plane_distance <= 4 then
+            sfx(2)
             g_score += 10
             deli(targets, next_target_index)
         else
@@ -350,6 +353,7 @@ function check_for_despawned_targets(targets)
     local next_target_index = 1
     while next_target_index <= count(targets) do
         if targets[next_target_index].pos.z == 0 then
+            sfx(0)
             deli(targets, next_target_index)
         else
             next_target_index += 1
@@ -400,7 +404,8 @@ function _init()
     -- initialize the plane's position to the center of the bottom lane
     g_plane_pos = {
         x = c_pico_8_screen_size / 2,
-        y = c_lanes.bottom
+        y = c_lanes.bottom,
+        z = 0
     }
 end
 
