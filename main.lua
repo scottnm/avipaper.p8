@@ -1,10 +1,8 @@
 -- TODO:
 -- add header comments to all functions describing what they do in "plane" english ☜(ﾟヮﾟ☜)
--- collide with targets
 -- only move vertically when hitting aircurrents (replace 'faux' movement)
 -- better target spawning patterns
 -- success particle fx when you collide with targets
--- add sound
 
 -- FURTHER IDEAS:
 -- day night/cycle for the background
