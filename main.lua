@@ -1,6 +1,10 @@
 -- TODO:
 -- add header comments to all functions describing what they do in "plane" english ☜(ﾟヮﾟ☜)
+-- collide with targets
 -- only move vertically when hitting aircurrents (replace 'faux' movement)
+-- better target spawning patterns
+-- success particle fx when you collide with targets
+-- add sound
 
 -- FURTHER IDEAS:
 -- day night/cycle for the background
@@ -44,10 +48,10 @@ g_plane_sprites = {
     mid_lane =    { outside =  7, leaning =  9, center = 11 },
     bottom_lane = { outside = 33, leaning = 35, center = 37 },
 }
+g_score = 0
 
 g_target_spritesheet_index = 13
 g_target_spritesheet_sprite_pos = get_spritesheet_pos(g_target_spritesheet_index)
-
 g_targets = {}
 
 function clamp(lower, value, upper)
@@ -416,12 +420,15 @@ function _draw()
     -- first draw the map
     map(0, 0, 0, 0, 32, 32)
 
-    -- then draw targets in perspective
+    -- draw targets in perspective
     foreach(g_targets, draw_target)
 
-    -- lastly draw the plane
+    -- draw the plane
     draw_plane(g_plane_pos, g_plane_size, g_plane_sprites)
 
     -- uncomment this to draw a debug grid showing where plane sprites change
     -- debug_render_sprite_grid(g_plane_pos)
+
+    -- draw the score
+    print("score: "..g_score, 0, 0, 7)
 end
